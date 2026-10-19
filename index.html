@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Nodo Clínico | Interoperabilidad e imagen médica</title>
+<meta name="description" content="Ingeniería de software para imagen médica: integración DICOM, flujos RIS, enrutamiento hacia VNA y aplicaciones clínicas web.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%230B6E78' stroke-width='3'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%230B6E78'/%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#EDF1F3; --surface:#F8FAFB; --ink:#13212B; --muted:#52636F;
+  --line:#C9D3DA; --accent:#0B6E78; --accent-soft:#D4E8EA;
+  --panel:#0F1C24; --panel-ink:#CFE3E6; --panel-dim:#6E8993; --ok:#5BC7A6;
+  --display:"IBM Plex Sans Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"IBM Plex Sans",-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D171D; --surface:#13212A; --ink:#E2EBEE; --muted:#97A9B3;
+    --line:#26363F; --accent:#5CC6CF; --accent-soft:#163238;
+    --panel:#081015; --panel-ink:#CFE3E6; --panel-dim:#5F7A84;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D171D; --surface:#13212A; --ink:#E2EBEE; --muted:#97A9B3;
+  --line:#26363F; --accent:#5CC6CF; --accent-soft:#163238;
+  --panel:#081015; --panel-ink:#CFE3E6; --panel-dim:#5F7A84;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 1.0625rem/1.6 var(--body);-webkit-font-smoothing:antialiased}
+img,svg{max-width:100%}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+.wrap{width:min(1120px,100% - 2.5rem);margin-inline:auto}
+
+/* Header */
+.site-head{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.site-head .wrap{display:flex;align-items:center;justify-content:space-between;gap:1rem;min-height:4rem}
+.brand{display:flex;align-items:center;gap:.6rem;color:var(--ink);text-decoration:none;font:600 1.2rem/1 var(--display);letter-spacing:.01em}
+.brand svg{width:26px;height:26px;color:var(--accent)}
+.nav{display:flex;gap:1.5rem}
+.nav a{color:var(--muted);text-decoration:none;font-size:.95rem}
+.nav a:hover{color:var(--ink)}
+@media (max-width:720px){.nav a:not(.nav-cta){display:none}}
+.nav-cta{color:var(--accent)!important;font-weight:500}
+
+/* Hero */
+.hero{padding:clamp(3rem,8vw,6.5rem) 0 clamp(3rem,7vw,5.5rem)}
+.hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(2rem,5vw,4.5rem);align-items:center}
+@media (max-width:900px){.hero .wrap{grid-template-columns:1fr}}
+.hero h1{font:600 clamp(2.4rem,5.6vw,4.1rem)/1.02 var(--display);letter-spacing:-.015em;margin:0 0 1.4rem;max-width:14ch}
+.lede{color:var(--muted);font-size:1.15rem;max-width:42ch;margin:0 0 2rem}
+.actions{display:flex;flex-wrap:wrap;gap:.8rem}
+.btn{display:inline-flex;align-items:center;padding:.8rem 1.35rem;border-radius:6px;font:500 1rem/1 var(--body);text-decoration:none;border:1px solid var(--accent)}
+.btn-primary{background:var(--accent);color:var(--bg)}
+.btn-ghost{color:var(--accent)}
+.btn:hover{filter:brightness(1.08)}
+
+/* Protocol monitor: the one bold element */
+.monitor{background:var(--panel);color:var(--panel-ink);border-radius:10px;overflow:hidden;box-shadow:0 30px 60px -30px rgba(8,30,40,.55)}
+.monitor-bar{display:flex;justify-content:space-between;align-items:center;padding:.85rem 1.1rem;border-bottom:1px solid #1E2F38;font:500 .85rem/1 var(--body);color:var(--panel-dim)}
+.live{display:inline-flex;align-items:center;gap:.45rem;color:var(--ok)}
+.live::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.log{margin:0;padding:1.1rem 1.1rem .6rem;font:400 .8rem/1.75 var(--mono);list-style:none;min-height:15.5rem;overflow-x:auto}
+.log li{white-space:pre;opacity:1}
+.log .k{color:#7FD3DA}
+.log .d{color:var(--panel-dim)}
+.log .s{color:var(--ok)}
+.js .log li{opacity:0}
+.js .log li.on{opacity:1;transition:opacity .25s}
+.progress{padding:.4rem 1.1rem 1.15rem}
+.progress-row{display:flex;justify-content:space-between;font:400 .8rem/1 var(--body);color:var(--panel-dim);margin-bottom:.55rem}
+.progress-row b{color:var(--panel-ink);font-weight:500;font-variant-numeric:tabular-nums}
+.track{height:4px;background:#1C2D36;border-radius:2px;overflow:hidden}
+.fill{height:100%;width:100%;background:linear-gradient(90deg,#3FA9B3,var(--ok))}
+.js .fill{width:0}
+
+/* Sections */
+section{padding:clamp(3.5rem,8vw,6rem) 0;border-top:1px solid var(--line)}
+.sec-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:2rem;margin-bottom:2.8rem;align-items:end}
+@media (max-width:820px){.sec-head{grid-template-columns:1fr;gap:.8rem}}
+h2{font:600 clamp(1.9rem,3.6vw,2.6rem)/1.08 var(--display);letter-spacing:-.01em;margin:0}
+.sec-head p{margin:0;color:var(--muted);max-width:56ch}
+h3{font:600 1.3rem/1.2 var(--display);margin:0 0 .45rem}
+
+/* Capabilities: spec rows */
+.specs{list-style:none;margin:0;padding:0}
+.specs li{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.5fr) minmax(0,.8fr);gap:1.5rem 2rem;padding:1.6rem 0;border-top:1px solid var(--line)}
+.specs li:last-child{border-bottom:1px solid var(--line)}
+.specs p{margin:0;color:var(--muted)}
+.std{font-size:.9rem;color:var(--accent);line-height:1.5}
+@media (max-width:820px){.specs li{grid-template-columns:1fr;gap:.4rem}}
+
+/* Projects */
+.projects{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 3rem}
+@media (max-width:760px){.projects{grid-template-columns:1fr}}
+.project{padding:1.8rem 0;border-top:1px solid var(--line)}
+.project p{margin:0 0 .9rem;color:var(--muted)}
+.tags{display:flex;flex-wrap:wrap;gap:.4rem;list-style:none;margin:0;padding:0}
+.tags li{font-size:.82rem;padding:.25rem .6rem;border-radius:4px;background:var(--accent-soft);color:var(--ink)}
+
+/* Timeline (a real sequence) */
+.timeline{list-style:none;margin:0;padding:0;position:relative}
+.timeline::before{content:"";position:absolute;left:4.6rem;top:.6rem;bottom:.6rem;width:1px;background:var(--line)}
+.timeline li{display:grid;grid-template-columns:4.6rem 1fr;gap:2rem;padding:0 0 2rem;position:relative}
+.timeline li::after{content:"";position:absolute;left:calc(4.6rem - 4px);top:.55rem;width:9px;height:9px;border-radius:50%;background:var(--bg);border:2px solid var(--accent)}
+.year{font:600 1.15rem/1.4 var(--display);color:var(--accent)}
+.timeline p{margin:0;color:var(--muted);max-width:60ch}
+.timeline strong{color:var(--ink);font-weight:500}
+
+/* Approach */
+.principles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:2.5rem}
+@media (max-width:820px){.principles{grid-template-columns:1fr;gap:1.8rem}}
+.principles p{margin:0;color:var(--muted)}
+
+/* Contact */
+.contact{background:var(--surface)}
+.contact .wrap{display:grid;grid-template-columns:1.2fr 1fr;gap:2.5rem;align-items:center}
+@media (max-width:820px){.contact .wrap{grid-template-columns:1fr}}
+.contact p{color:var(--muted);margin:.8rem 0 0;max-width:48ch}
+.contact-box{display:flex;flex-direction:column;gap:.9rem;align-items:flex-start}
+.mail{font:500 clamp(1.15rem,2.4vw,1.45rem)/1.3 var(--body);color:var(--ink);text-decoration-color:var(--accent);text-underline-offset:5px;word-break:break-all}
+
+footer{padding:2rem 0 2.5rem;border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
+footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  .js .log li{opacity:1}
+  .js .fill{width:100%}
+}
+</style>
+</head>
+<body>
+<script>document.documentElement.classList.add('js')</script>
+
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="#inicio" aria-label="Nodo Clínico, inicio">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="M16 3v6M16 23v6M3 16h6M23 16h6" stroke="currentColor" stroke-width="2.5"/><circle cx="16" cy="16" r="3.5" fill="currentColor"/></svg>
+      Nodo Clínico
+    </a>
+    <nav class="nav" aria-label="Principal">
+      <a href="#capacidades">Capacidades</a>
+      <a href="#proyectos">Proyectos</a>
+      <a href="#trayectoria">Trayectoria</a>
+      <a class="nav-cta" href="#contacto">Contacto</a>
+    </nav>
+  </div>
+</header>
+
+<main id="inicio">
+  <div class="hero">
+    <div class="wrap">
+      <div>
+        <h1>Cada estudio médico, en el lugar correcto y a tiempo.</h1>
+        <p class="lede">Diseñamos e integramos el software que conecta modalidades, PACS, RIS y archivos clínicos. Casi una década resolviendo interoperabilidad en imagen médica, del equipo de rayos X al archivo central.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#contacto">Hablemos de tu proyecto</a>
+          <a class="btn btn-ghost" href="#proyectos">Ver proyectos</a>
+        </div>
+      </div>
+
+      <figure class="monitor" aria-label="Ejemplo de una transferencia DICOM entre una modalidad y un archivo central">
+        <div class="monitor-bar"><span>Gateway DICOM</span><span class="live">En línea</span></div>
+        <ol class="log" id="log">
+          <li><span class="k">A-ASSOCIATE-RQ</span>  CT_SALA2 &gt; GATEWAY</li>
+          <li><span class="k">A-ASSOCIATE-AC</span>  <span class="s">aceptada</span></li>
+          <li><span class="k">C-ECHO-RQ     </span>  <span class="s">0000 Success</span></li>
+          <li><span class="k">C-FIND-RQ     </span>  nivel STUDY  <span class="d">3 coincidencias</span></li>
+          <li><span class="k">C-MOVE-RQ     </span>  destino VNA_CENTRAL</li>
+          <li><span class="k">C-STORE-RQ    </span>  <span class="d">1.2.840.10008.5.1.4.1.1.2</span></li>
+          <li><span class="k">C-STORE-RSP   </span>  <span class="s">0000 Success</span></li>
+          <li><span class="k">A-RELEASE-RQ  </span>  <span class="d">asociación cerrada</span></li>
+        </ol>
+        <div class="progress">
+          <div class="progress-row"><span>Imágenes transferidas</span><b id="count">214 / 214</b></div>
+          <div class="track"><div class="fill" id="fill"></div></div>
+        </div>
+      </figure>
+    </div>
+  </div>
+
+  <section id="capacidades">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>Lo que hacemos</h2>
+        <p>Trabajamos donde los estándares de salud se encuentran con sistemas reales: equipos de distintos fabricantes, hospitales con varias sedes y datos de pacientes que no pueden perderse.</p>
+      </div>
+      <ul class="specs">
+        <li>
+          <h3>Integración DICOM</h3>
+          <p>Servicios que reciben, consultan, recuperan y envían estudios entre modalidades, estaciones de trabajo y PACS, con monitoreo y reintentos.</p>
+          <span class="std">SCP y SCU, C-ECHO, C-FIND, C-MOVE, C-STORE</span>
+        </li>
+        <li>
+          <h3>Flujo radiológico</h3>
+          <p>Sistemas RIS que ordenan el trabajo diario: registro del paciente, seguimiento del estudio y control de estudios dictados.</p>
+          <span class="std">RIS, worklist, flujo de dictado</span>
+        </li>
+        <li>
+          <h3>Archivo y enrutamiento</h3>
+          <p>Envío automático de estudios desde repositorios locales hacia archivos centrales, sincronización entre sedes y vigilancia de carpetas.</p>
+          <span class="std">VNA, PACS, multi-sitio</span>
+        </li>
+        <li>
+          <h3>Interoperabilidad clínica</h3>
+          <p>Intercambio de órdenes, resultados y datos demográficos con los sistemas del hospital, cuidando la información de cada paciente.</p>
+          <span class="std">HL7, FHIR, validación de CURP</span>
+        </li>
+        <li>
+          <h3>Aplicaciones clínicas web</h3>
+          <p>Interfaces modernas y APIs para el personal médico y administrativo, construidas para mantenerse durante años.</p>
+          <span class="std">.NET, Java, Angular, TypeScript</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="proyectos">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>Proyectos seleccionados</h2>
+        <p>Una muestra de soluciones en producción y en desarrollo. Por confidencialidad, describimos lo que hace cada una sin nombrar clientes ni instituciones.</p>
+      </div>
+      <div class="projects">
+        <article class="project">
+          <h3>Gateway de recepción DICOM</h3>
+          <p>Servicio que recibe estudios de las modalidades y los guarda de forma ordenada en un repositorio local, listo para su distribución.</p>
+          <ul class="tags"><li>DICOM SCP</li><li>C#</li><li>Servicio Windows</li></ul>
+        </article>
+        <article class="project">
+          <h3>Enrutador hacia archivo central</h3>
+          <p>Envío automático de estudios desde el repositorio central hacia un VNA, con control de pendientes y reintentos.</p>
+          <ul class="tags"><li>DICOM SCU</li><li>VNA</li><li>C#</li></ul>
+        </article>
+        <article class="project">
+          <h3>Sincronización entre sedes</h3>
+          <p>Vigilancia de carpetas y sincronización de estudios entre sitios, para que cada sede consulte la misma información.</p>
+          <ul class="tags"><li>File watcher</li><li>Multi-sitio</li><li>C#</li></ul>
+        </article>
+        <article class="project">
+          <h3>RIS de nueva generación</h3>
+          <p>Prueba de concepto de un sistema de información radiológica web, sucesor de un RIS ligero en operación desde 2017.</p>
+          <ul class="tags"><li>RIS</li><li>TypeScript</li><li>Web</li></ul>
+        </article>
+        <article class="project">
+          <h3>Integración con PACS de código abierto</h3>
+          <p>Implementación de consulta, recuperación y almacenamiento sobre un PACS abierto, como base para integraciones de bajo costo.</p>
+          <ul class="tags"><li>C-FIND</li><li>C-MOVE</li><li>C-STORE</li><li>Java</li></ul>
+        </article>
+        <article class="project">
+          <h3>Control de estudios dictados</h3>
+          <p>Servicio que detecta los estudios ya interpretados y actualiza su estado, para que nada quede sin informe.</p>
+          <ul class="tags"><li>Flujo de dictado</li><li>Automatización</li></ul>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="trayectoria">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>Trayectoria</h2>
+        <p>De servicios de red DICOM a plataformas web completas, siempre dentro de imagen médica.</p>
+      </div>
+      <ol class="timeline">
+        <li><span class="year">2017</span><p><strong>Infraestructura DICOM.</strong> Servicios de recepción y envío, consolas de configuración de nodos y un primer RIS ligero.</p></li>
+        <li><span class="year">2020</span><p><strong>APIs web.</strong> Arquitecturas de servicios para exponer información clínica a aplicaciones web.</p></li>
+        <li><span class="year">2024</span><p><strong>PACS abiertos.</strong> Integración completa de consulta, recuperación y almacenamiento sobre plataformas de código abierto.</p></li>
+        <li><span class="year">2025</span><p><strong>Front-end moderno y datos de identidad.</strong> Aplicaciones Angular con estándares de calidad y utilidades de validación de CURP.</p></li>
+        <li><span class="year">2026</span><p><strong>Nueva generación de RIS.</strong> Plataforma web en TypeScript que reemplaza la operación heredada.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="enfoque">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>Cómo trabajamos</h2>
+        <p>La tecnología en salud no admite improvisación. Estas reglas guían cada proyecto.</p>
+      </div>
+      <div class="principles">
+        <div><h3>Estándares primero</h3><p>Seguimos DICOM y HL7 al pie de la letra para que nuestro software conviva con equipos de cualquier fabricante.</p></div>
+        <div><h3>El paciente en el centro</h3><p>Los datos clínicos se tratan con el mínimo acceso necesario, trazabilidad y decisiones documentadas.</p></div>
+        <div><h3>Lo heredado también cuenta</h3><p>Modernizamos sin detener la operación: los sistemas actuales siguen funcionando mientras llega la nueva versión.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="contact" id="contacto">
+    <div class="wrap">
+      <div>
+        <h2>¿Tienes un reto de integración?</h2>
+        <p>Cuéntanos qué equipos y sistemas necesitas conectar. Respondemos en un plazo de dos días hábiles.</p>
+      </div>
+      <div class="contact-box">
+        <a class="mail" href="mailto:contacto@tudominio.com">contacto@tudominio.com</a>
+        <a class="btn btn-primary" href="mailto:contacto@tudominio.com?subject=Proyecto%20de%20integraci%C3%B3n">Escribir un correo</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Nodo Clínico</span>
+    <span>Interoperabilidad e imagen médica, Ciudad de México</span>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var lines = document.querySelectorAll('#log li');
+  var fill = document.getElementById('fill');
+  var count = document.getElementById('count');
+  var total = 214;
+  if (reduce){ lines.forEach(function(l){ l.classList.add('on'); }); return; }
+  count.textContent = '0 / ' + total;
+  var i = 0;
+  function next(){
+    if (i >= lines.length) return;
+    lines[i].classList.add('on');
+    if (i === 5){ transfer(); return; }
+    i++;
+    setTimeout(next, 420);
+  }
+  function transfer(){
+    var n = 0;
+    var t = setInterval(function(){
+      n = Math.min(total, n + 7);
+      count.textContent = n + ' / ' + total;
+      fill.style.width = (n / total * 100) + '%';
+      if (n >= total){ clearInterval(t); i++; setTimeout(next, 300); }
+    }, 45);
+  }
+  setTimeout(next, 500);
+})();
+</script>
+</body>
+</html>
